@@ -19,8 +19,8 @@ type bitstringwriter struct {
 	overflow *byte
 }
 
-func (b *bitstringwriter) write(bitstring string) error {
-	return nil
+func (b *bitstringwriter) Write(bitstring []byte) (int, error) {
+	return 0, nil
 }
 
 type Frequentable interface {
