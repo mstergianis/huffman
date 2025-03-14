@@ -1,76 +1,10 @@
 package main
 
-import (
-	"bytes"
-	"fmt"
-	"log"
-	"sort"
-)
+import "github.com/mstergianis/huffman/pkg/huffman"
 
 func main() {
 	input := "hello world"
-	huffman(input)
-	return
-}
-
-func huffman(input string) (mapping map[rune]int, output []byte) {
-
-	ordered := computeFreqTable(input)
-
-	tree := makeTree(ordered)
-	printTree(tree)
-
-	for _, r := range input {
-		bitstring, ok := tree.Search(r)
-		if !ok {
-			log.Fatalf("we can't find the rune %s in the tree", string(r))
-		}
-		fmt.Printf("%s => %s\n", string(r), bitstring)
-	}
-
-	return nil, nil
-}
-
-type bitstringwriter struct {
-	b        bytes.Buffer
-	overflow *byte
-}
-
-func (b *bitstringwriter) Write(bitstring []byte) (int, error) {
-	return 0, nil
-}
-
-type freqPair struct {
-	r    rune
-	freq int
-}
-
-func (f freqPair) Freq() int {
-	return f.freq
-}
-
-func (f freqPair) String() string {
-	return fmt.Sprintf("('%s', %d)", string(f.r), f.freq)
-}
-
-func computeFreqTable(input string) (ordered []freqPair) {
-	freqTable := make(map[rune]int)
-	ordered = make([]freqPair, 0, 64)
-	for _, r := range input {
-		if _, ok := freqTable[r]; !ok {
-			freqTable[r] = 0
-		}
-		freqTable[r]++
-	}
-
-	for k, v := range freqTable {
-		ordered = append(ordered, freqPair{r: k, freq: v})
-	}
-
-	sort.SliceStable(ordered, func(i int, j int) bool {
-		return ordered[i].freq < ordered[j].freq
-	})
-
+	huffman.Huffman(input)
 	return
 }
 
