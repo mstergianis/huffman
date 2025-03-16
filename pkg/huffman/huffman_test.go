@@ -49,7 +49,6 @@ func TestComputeFreqTable(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	t.SkipNow()
 	type testCase struct {
 		n        *Node
 		query    rune
