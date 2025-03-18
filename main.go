@@ -1,11 +1,29 @@
 package main
 
-import "github.com/mstergianis/huffman/pkg/huffman"
+import (
+	"fmt"
+	"os"
+
+	"github.com/mstergianis/huffman/pkg/huffman"
+)
 
 func main() {
-	input := "hello world"
-	huffman.Huffman(input)
+	treeAsBytes, contentAsBytes, err := huffman.Huffman(WILD_WILD_WEST)
+	check(err)
+
+	f, err := os.Open("output.huff")
+	check(err)
+	defer f.Close()
+
+	fmt.Fprint(f, treeAsBytes, contentAsBytes)
+
 	return
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err.Error())
+	}
 }
 
 const WILD_WILD_WEST = `

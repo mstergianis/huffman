@@ -11,6 +11,154 @@ func TestHuffman(t *testing.T) {
 
 }
 
+func TestEncodeTree(t *testing.T) {
+	t.Run("empty input", func(t *testing.T) {
+		var n *Node
+		bs := n.Bytes()
+		Equal(t, nil, bs)
+	})
+
+	t.Run("single node tree", func(t *testing.T) {
+		n := &Node{freqPair: &freqPair{b: 'r', freq: 1}}
+		bs := n.Bytes()
+		Equal(t, []byte{0b0101_1100, 0b1000_0000}, bs)
+	})
+
+	t.Run("multi node tree", func(t *testing.T) {
+		n := &Node{
+			freq: 2,
+			left: &Node{
+				freqPair: &freqPair{b: 'l', freq: 1},
+			},
+			right: &Node{
+				freqPair: &freqPair{b: 'r', freq: 1},
+			},
+		}
+		bs := n.Bytes()
+		expected := []byte{
+			0b1101_0110,
+			0b1100_1001,
+			0b0111_0010,
+		}
+		Equal(t, expected, bs)
+	})
+
+	t.Run("hello world tree", func(t *testing.T) {
+		// left
+		//          "r" => 000  (Write(   0b0, 3))
+		//          "h" => 001  (Write(   0b1, 3))
+		//          "d" => 010  (Write(  0b10, 3))
+		//          "e" => 011  (Write(  0b11, 3))
+
+		// right
+		//          "l" => 10   (Write(  0b10, 2))
+		//          "o" => 111  (Write( 0b111, 3))
+		//          " " => 1100 (Write(0b1100, 4))
+		//          "w" => 1101 (Write(0b1101, 4))
+		n := &Node{
+			left: &Node{
+				left: &Node{
+					left:  &Node{freqPair: &freqPair{b: 'r'}},
+					right: &Node{freqPair: &freqPair{b: 'h'}},
+				},
+				right: &Node{
+					left:  &Node{freqPair: &freqPair{b: 'd'}},
+					right: &Node{freqPair: &freqPair{b: 'e'}},
+				},
+			},
+			right: &Node{
+				left: &Node{freqPair: &freqPair{b: 'l'}},
+				right: &Node{
+					left: &Node{
+						left:  &Node{freqPair: &freqPair{b: ' '}},
+						right: &Node{freqPair: &freqPair{b: 'w'}},
+					},
+					right: &Node{freqPair: &freqPair{b: 'o'}},
+				},
+			},
+		}
+		bs := n.Bytes()
+		expected := []byte{
+			0b1111_1101, // l, l, l, f
+			0b0111_0010, // r
+			0b1001_0110, // r, f, 4 bits of h
+			0b1000_1011,
+			0b0101_1001,
+			0b0010_0101, // up to d
+			0b1001_0110, // up to e, then right control bits
+			0b1101_0110, // first 4 bits of l
+			0b1100_1011, // last 4 bits of l, then right left
+			0b1101_0010, // left again then space
+			0b0000_1001, // last 4 bits of space, right, then freq control
+			0b0111_0111, // w
+			0b1001_0110, // right, freq, first 4 bits of o
+			0b1111_0000, // last 4 bits of o
+		}
+		Equal(t, expected, bs)
+	})
+}
+
+func TestMaxLeafFreq(t *testing.T) {
+	type testCase struct {
+		input    *Node
+		expected int
+		name     string
+	}
+	testCases := []testCase{
+		{
+			input: &Node{
+				left: &Node{
+					freqPair: &freqPair{
+						freq: 1,
+					},
+				},
+				right: &Node{
+					freqPair: &freqPair{
+						freq: 0,
+					},
+				},
+			},
+			expected: 1,
+			name:     "simple",
+		},
+		{
+			input: &Node{
+				left: &Node{
+					left: &Node{
+						freqPair: &freqPair{
+							freq: 1,
+						},
+					},
+					right: &Node{
+						freqPair: &freqPair{
+							freq: 0,
+						},
+					},
+				},
+				right: &Node{
+					left: &Node{
+						freqPair: &freqPair{
+							freq: 4,
+						},
+					},
+					// In reality this wouldn't happen because of the way we
+					// construct the tree. But this function can still be
+					// tolerant to weird trees.
+					right: nil,
+				},
+			},
+			expected: 4,
+			name:     "less simple",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := maxLeafFreq(tc.input)
+			Equal(t, tc.expected, actual)
+		})
+	}
+}
+
 func TestComputeFreqTable(t *testing.T) {
 	type testCase struct {
 		input    string
@@ -21,19 +169,19 @@ func TestComputeFreqTable(t *testing.T) {
 	testCases := []testCase{
 		{
 			input:    "aaaaaaaa",
-			expected: []freqPair{{r: 'a', freq: 8}},
+			expected: []freqPair{{b: 'a', freq: 8}},
 		},
 		{
 			input: "hello world",
 			expected: []freqPair{
-				{r: ' ', freq: 1},
-				{r: 'r', freq: 1},
-				{r: 'h', freq: 1},
-				{r: 'e', freq: 1},
-				{r: 'l', freq: 3},
-				{r: 'w', freq: 1},
-				{r: 'd', freq: 1},
-				{r: 'o', freq: 2},
+				{b: ' ', freq: 1},
+				{b: 'r', freq: 1},
+				{b: 'h', freq: 1},
+				{b: 'e', freq: 1},
+				{b: 'l', freq: 3},
+				{b: 'w', freq: 1},
+				{b: 'd', freq: 1},
+				{b: 'o', freq: 2},
 			},
 		},
 	}
@@ -49,26 +197,83 @@ func TestComputeFreqTable(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
+	type searchReturn struct {
+		b byte
+		w int
+	}
 	type testCase struct {
 		n        *Node
-		query    rune
-		expected struct {
-			s string
-			b bool
-		}
-		name string
+		query    byte
+		expected searchReturn
+		name     string
+	}
+	tree := &Node{
+		right: &Node{
+			right: &Node{
+				freqPair: &freqPair{
+					b:    'r',
+					freq: 2,
+				},
+			},
+			left: &Node{
+				freqPair: &freqPair{
+					b:    'z',
+					freq: 2,
+				},
+			},
+		},
+		left: &Node{
+			freqPair: &freqPair{
+				b:    'o',
+				freq: 4,
+			},
+		},
 	}
 
 	testCases := []testCase{
-		{},
-		{},
+		{
+			name:  "find r",
+			n:     tree,
+			query: 'r',
+			expected: searchReturn{
+				b: 0b11,
+				w: 2,
+			},
+		},
+		{
+			name:  "find o",
+			n:     tree,
+			query: 'o',
+			expected: searchReturn{
+				b: 0b0,
+				w: 1,
+			},
+		},
+		{
+			name:  "find z",
+			n:     tree,
+			query: 'z',
+			expected: searchReturn{
+				b: 0b10,
+				w: 2,
+			},
+		},
+		{
+			name:  "find x, which is not present",
+			n:     tree,
+			query: 'x',
+			expected: searchReturn{
+				b: 0b0,
+				w: -1,
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualS, actualB := tc.n.Search(tc.query)
+			actualByte, actualWidth := tc.n.Search(tc.query)
 
-			assert.Equal(t, tc.expected.s, actualS)
-			assert.Equal(t, tc.expected.b, actualB)
+			assert.Equal(t, tc.expected.b, actualByte)
+			assert.Equal(t, tc.expected.w, actualWidth)
 		})
 	}
 }
@@ -88,25 +293,25 @@ func TestBitStringWrite(t *testing.T) {
 	//          "l" => 10   (Write(  0b10, 2))
 	//          "d" => 010  (Write(  0b10, 3))
 	//
-	// h            => offset = 3 [[0010 0000]]
-	//                                 ^
-	// e            => offset = 6 [[0010 1100]]
-	//                                     ^
-	// l            => offset = 8 [[0010 1110]]
+	// "h"            => offset = 3 [[0010 0000]]
+	//                                   ^
+	// "e"            => offset = 6 [[0010 1100]]
 	//                                       ^
+	// "l"            => offset = 8 [[0010 1110]]
+	//                                         ^
 	//
 	// taking a bit of time with this
 	//  pre-write:
-	// l (overflow) => offset = 0 [[0010 1110] [0000 0000]]
-	//                                          ^
-	// post-write:
-	// l (overflow) => offset = 2 [[0010 1110] [1000 0000]]
+	// "l" (overflow) => offset = 0 [[0010 1110] [0000 0000]]
 	//                                            ^
+	// post-write:
+	// "l" (overflow) => offset = 2 [[0010 1110] [1000 0000]]
+	//                                              ^
 	//
-	// o            => offset = 5 [[0010 1110] [1011 1000]]
-	//                                                ^
-	//              => offset = 1 [[0010 1110] [1011 1110] [0000 0000]]
-	//                                                       ^
+	// "o"            => offset = 5 [[0010 1110] [1011 1000]]
+	//                                                  ^
+	// " "            => offset = 1 [[0010 1110] [1011 1110] [0000 0000]]
+	//                                                         ^
 	t.Run("write empty", func(t *testing.T) {
 		bs := &BitStringWriter{}
 		bs.Write(0, 0)
@@ -187,21 +392,21 @@ func Equal[E any](t assert.TestingT, expected, actual E, msgAndArgs ...any) bool
 func bitPattern(s string) (byte, int) {
 	switch s {
 	case "h":
-		return 0b001, 3
+		return 0b0001, 3
 	case "e":
-		return 0b011, 3
+		return 0b0011, 3
 	case "l":
-		return 0b10, 2
+		return 0b0010, 2
 	case "o":
-		return 0b111, 3
+		return 0b0111, 3
 	case " ":
 		return 0b1100, 4
 	case "w":
 		return 0b1101, 4
 	case "r":
-		return 0b000, 3
+		return 0b0000, 3
 	case "d":
-		return 0b010, 3
+		return 0b0010, 3
 	}
 	panic(fmt.Sprintf("unsupported character passed into convertCharToBitPattern: %s", s))
 }

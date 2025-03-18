@@ -2,12 +2,16 @@ package huffman
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 )
 
-func Huffman(input string) (*Node, []byte) {
+func Huffman(input string) ([]byte, []byte, error) {
+	for i, r := range input {
+		if r > 127 || r < 0 {
+			return nil, nil, fmt.Errorf("error: encountered a non-ascii character %c at position %d", r, i)
+		}
+	}
 	ordered := computeFreqTable(input)
 
 	tree := NewNode(ordered)
@@ -15,16 +19,16 @@ func Huffman(input string) (*Node, []byte) {
 
 	bs := &BitStringWriter{}
 
-	for _, r := range input {
-		byte, bitWidth := tree.Search(r)
+	for _, b := range []byte(input) {
+		byte, bitWidth := tree.Search(b)
 		if bitWidth == -1 {
-			log.Fatalf("we can't find the rune %s in the tree", string(r))
+			return nil, nil, fmt.Errorf("error: cannot find the byte %c in the tree", b)
 		}
-		fmt.Printf("%q => ", string(r))
+		fmt.Printf("%q => ", string(b))
 		bs.Write(byte, bitWidth)
 	}
 
-	return tree, bs.Bytes()
+	return tree.Bytes(), bs.Bytes(), nil
 }
 
 type Node struct {
@@ -92,9 +96,12 @@ func NewNode(ordered []freqPair) *Node {
 	return head
 }
 
-func (n *Node) Search(r rune) (byte, int) {
+func (n *Node) Search(b byte) (byte, int) {
+	if n == nil {
+		return 0, -1
+	}
 	if n.freqPair != nil {
-		if n.freqPair.r == r {
+		if n.freqPair.b == b {
 			return 0, 0
 		}
 		return 0, -1
@@ -104,12 +111,12 @@ func (n *Node) Search(r rune) (byte, int) {
 		return 0, -1
 	}
 
-	leftByte, leftBitWidth := n.left.Search(r)
+	leftByte, leftBitWidth := n.left.Search(b)
 	if leftBitWidth >= 0 {
 		return leftByte, leftBitWidth + 1
 	}
 
-	rightByte, rightBitWidth := n.right.Search(r)
+	rightByte, rightBitWidth := n.right.Search(b)
 	if rightBitWidth >= 0 {
 		return rightByte | (1 << rightBitWidth), rightBitWidth + 1
 	}
@@ -155,10 +162,57 @@ func (n *Node) Freq() int {
 
 // Bytes encodes the tree as an array of bytes
 //
+// Frequencies are omitted to save data and because they are not essential for
+// recovering the compressed text.
+//
 // The tree is encoded depth-first, to make deserializing easier.
 func (n *Node) Bytes() []byte {
-	// serialize the first node
-	return nil
+	// grammar:
+	//   node                       = (leftChild rightChild) | freqPair .
+	//   leftChild         (2 bits) = leftBitString node .
+	//   rightChild        (2 bits) = rightBitString node .
+	//   freqPair         (10 bits) = freqPairBitstring byte .
+	//   freqPairBitString (2 bits) = "01" .
+	//   leftBitString     (2 bits) = "11" .
+	//   rightBitString    (2 bits) = "10" .
+	//   binaryDigit                = "1" | "0" .
+	//
+	// Notice that the grammar does not prescribe that all elements occupy a
+	// full byte. But that all valid inputs would start with the bit width used.
+	// Thus you should be able to write a program that correctly allocates a
+	// tree based on the input.
+	//
+	// One could probably analyze the character set and eke out a bit more data
+	// savings. But I'm going to be saving the whole byte (rune... char...
+	// whatever).
+
+	bs := &BitStringWriter{}
+	nodeToBytes(n, bs)
+
+	return bs.Bytes()
+}
+
+func nodeToBytes(n *Node, bs *BitStringWriter) {
+	if n == nil {
+		return
+	}
+
+	if n.freqPair != nil {
+		bs.Write(0b01, 2)
+		bs.Write(n.freqPair.b, 8)
+	}
+
+	if n.left != nil {
+		bs.Write(0b11, 2)
+		nodeToBytes(n.left, bs)
+	}
+
+	if n.right != nil {
+		bs.Write(0b10, 2)
+		nodeToBytes(n.right, bs)
+	}
+
+	return
 }
 
 // printTree is a debugging tool
@@ -238,6 +292,10 @@ func (bs *BitStringWriter) Write(b byte, w int) {
 		bs.addByte()
 	}
 
+	// TODO: this section needs to be reworked. Wild Wild West has such a large
+	// tree that we need to account for bit strings that are longer than a byte
+	// in the first place.
+
 	// do we have enough space for the whole "partial-byte"?
 	overflow := bs.offset + w
 	if overflow > 8 {
@@ -269,6 +327,9 @@ func (bs *BitStringWriter) Bytes() []byte {
 }
 
 func computeRightByte(b byte, w int) byte {
+	// TODO: this function needs to be reworked. 8 bits doesn't make sense from
+	// the perspective of the tree.. Moreover we probably need to pass in a byte
+	// array.
 	switch w {
 	case 0:
 		return 0
@@ -286,8 +347,10 @@ func computeRightByte(b byte, w int) byte {
 		return b & 0b0011_1111
 	case 7:
 		return b & 0b0111_1111
+	case 8:
+		return b & 0b1111_1111
 	}
-	panic("computeRightByte: encountered a width greater than 7")
+	panic("computeRightByte: encountered a width greater than 8")
 }
 
 func (bs *BitStringWriter) addByte() {
@@ -301,7 +364,7 @@ func (bs *BitStringWriter) writeToLastByte(b byte, w int) {
 }
 
 type freqPair struct {
-	r    rune
+	b    byte
 	freq int
 }
 
@@ -310,13 +373,13 @@ func (f freqPair) Freq() int {
 }
 
 func (f freqPair) String() string {
-	return fmt.Sprintf("('%s', %d)", string(f.r), f.freq)
+	return fmt.Sprintf("('%s', %d)", string(f.b), f.freq)
 }
 
 func computeFreqTable(input string) (ordered []freqPair) {
-	freqTable := make(map[rune]int)
+	freqTable := make(map[byte]int)
 	ordered = make([]freqPair, 0, 64)
-	for _, r := range input {
+	for _, r := range []byte(input) {
 		if _, ok := freqTable[r]; !ok {
 			freqTable[r] = 0
 		}
@@ -324,7 +387,7 @@ func computeFreqTable(input string) (ordered []freqPair) {
 	}
 
 	for k, v := range freqTable {
-		ordered = append(ordered, freqPair{r: k, freq: v})
+		ordered = append(ordered, freqPair{b: k, freq: v})
 	}
 
 	sort.SliceStable(ordered, func(i int, j int) bool {
