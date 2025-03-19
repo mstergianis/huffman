@@ -287,15 +287,15 @@ type BitStringWriter struct {
 }
 
 func (bs *BitStringWriter) WriteBytes(bytes []byte, w int) {
-	onByte := 0
+	currentByte := 0
 	widthRemaining := w
 	for widthRemaining >= 8 {
-		bs.Write(bytes[onByte], 8)
-		onByte++
+		bs.Write(bytes[currentByte], 8)
+		currentByte++
 		widthRemaining -= 8
 	}
 	if widthRemaining > 0 {
-		bs.Write(bytes[onByte], widthRemaining)
+		bs.Write(bytes[currentByte], widthRemaining)
 	}
 }
 
