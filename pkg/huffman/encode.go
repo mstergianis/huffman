@@ -5,10 +5,10 @@ import (
 	"sort"
 )
 
-func Encode(input []byte) ([]byte, []byte, error) {
+func Encode(input []byte) ([]byte, error) {
 	for i, r := range input {
 		if r > 127 || r < 0 {
-			return nil, nil, fmt.Errorf("error: encountered a non-ascii character %c at position %d", r, i)
+			return nil, fmt.Errorf("error: encountered a non-ascii character %c at position %d", r, i)
 		}
 	}
 	ordered := computeFreqTable(input)
@@ -17,16 +17,17 @@ func Encode(input []byte) ([]byte, []byte, error) {
 	// printTree(tree)
 
 	bs := &BitStringWriter{}
+	tree.WriteBytes(bs)
 
 	for _, b := range []byte(input) {
 		bytes, bitWidth := tree.Search(b)
 		if bitWidth == -1 {
-			return nil, nil, fmt.Errorf("error: cannot find the byte %c in the tree", b)
+			return nil, fmt.Errorf("error: cannot find the byte %c in the tree", b)
 		}
 		bs.WriteBytes(bytes, bitWidth)
 	}
 
-	return tree.Bytes(), bs.Bytes(), nil
+	return bs.Bytes(), nil
 }
 
 func computeRightByte(b byte, w int) byte {

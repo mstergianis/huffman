@@ -4,13 +4,15 @@ import "testing"
 
 func TestNewNodeFromBytes(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
-		n := NewNodeFromBytes(nil)
+		bs := NewBitStringReader([]byte{})
+		n := NewNodeFromBytes(bs)
 		Equal(t, nil, n)
 	})
 
 	t.Run("single node tree", func(t *testing.T) {
 		input := []byte{0b0101_1100, 0b1000_0000}
-		n := NewNodeFromBytes(input)
+		bs := NewBitStringReader(input)
+		n := NewNodeFromBytes(bs)
 
 		expected := &Node{freqPair: &freqPair{char: 'r'}}
 		Equal(t, expected, n, "expected: %08b actual: %08b", expected.freqPair.char, n.freqPair.char)
@@ -22,7 +24,8 @@ func TestNewNodeFromBytes(t *testing.T) {
 			0b1100_1001,
 			0b0111_0010,
 		}
-		n := NewNodeFromBytes(input)
+		bs := NewBitStringReader(input)
+		n := NewNodeFromBytes(bs)
 		expected := &Node{
 			left: &Node{
 				freqPair: &freqPair{char: 'l'},
@@ -40,7 +43,8 @@ func TestNewNodeFromBytes(t *testing.T) {
 			0b0010_1101,
 			0b0110_1100,
 		}
-		n := NewNodeFromBytes(input)
+		bs := NewBitStringReader(input)
+		n := NewNodeFromBytes(bs)
 		expected := &Node{
 			left: &Node{
 				freqPair: &freqPair{char: 'l'},
@@ -103,7 +107,8 @@ func TestNewNodeFromBytes(t *testing.T) {
 				},
 			},
 		}
-		n := NewNodeFromBytes(input)
+		bs := NewBitStringReader(input)
+		n := NewNodeFromBytes(bs)
 		Equal(t, expected, n)
 	})
 }

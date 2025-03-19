@@ -7,6 +7,9 @@ type BitStringReader struct {
 }
 
 func NewBitStringReader(input []byte) *BitStringReader {
+	if input == nil || len(input) < 1 {
+		return nil
+	}
 	return &BitStringReader{buffer: input, offset: 0, currentByte: 0}
 }
 

@@ -146,13 +146,13 @@ func (n *Node) Freq() int {
 	return n.freq
 }
 
-// Bytes encodes the tree as an array of bytes
+// WriteBytes encodes the tree as an array of bytes
 //
 // Frequencies are omitted to save data and because they are not essential for
 // recovering the compressed text.
 //
 // The tree is encoded depth-first, to make deserializing easier.
-func (n *Node) Bytes() []byte {
+func (n *Node) WriteBytes(bs *BitStringWriter) {
 	// grammar:
 	//   node                       = (leftChild rightChild) | freqPair .
 	//   leftChild         (2 bits) = leftBitString node .
@@ -164,21 +164,10 @@ func (n *Node) Bytes() []byte {
 	//   binaryDigit                = "1" | "0" .
 	//
 	// Notice that the grammar does not prescribe that all elements occupy a
-	// full byte. But that all valid inputs would start with the bit width used.
-	// Thus you should be able to write a program that correctly allocates a
-	// tree based on the input.
-	//
-	// One could probably analyze the character set and eke out a bit more data
-	// savings. But I'm going to be saving the whole byte (rune... char...
-	// whatever).
+	// full byte. But that all valid inputs would start with 2 control bits.
+	// From there what you read is dependent on the control bits that you read
+	// in.
 
-	bs := &BitStringWriter{}
-	nodeToBytes(n, bs)
-
-	return bs.Bytes()
-}
-
-func nodeToBytes(n *Node, bs *BitStringWriter) {
 	if n == nil {
 		return
 	}
@@ -190,12 +179,12 @@ func nodeToBytes(n *Node, bs *BitStringWriter) {
 
 	if n.left != nil {
 		bs.Write(byte(CONTROL_BIT_LEFT), 2)
-		nodeToBytes(n.left, bs)
+		n.left.WriteBytes(bs)
 	}
 
 	if n.right != nil {
 		bs.Write(byte(CONTROL_BIT_RIGHT), 2)
-		nodeToBytes(n.right, bs)
+		n.right.WriteBytes(bs)
 	}
 
 	return

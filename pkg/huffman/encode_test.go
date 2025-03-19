@@ -9,14 +9,16 @@ import (
 func TestEncodeTree(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
 		var n *Node
-		bs := n.Bytes()
-		Equal(t, nil, bs)
+		bs := &BitStringWriter{}
+		n.WriteBytes(bs)
+		Equal(t, []byte(nil), bs.Bytes())
 	})
 
 	t.Run("single node tree", func(t *testing.T) {
 		n := &Node{freqPair: &freqPair{char: 'r', freq: 1}}
-		bs := n.Bytes()
-		Equal(t, []byte{0b0101_1100, 0b1000_0000}, bs)
+		bs := &BitStringWriter{}
+		n.WriteBytes(bs)
+		Equal(t, []byte{0b0101_1100, 0b1000_0000}, bs.Bytes())
 	})
 
 	t.Run("multi node tree", func(t *testing.T) {
@@ -29,13 +31,14 @@ func TestEncodeTree(t *testing.T) {
 				freqPair: &freqPair{char: 'r', freq: 1},
 			},
 		}
-		bs := n.Bytes()
+		bs := &BitStringWriter{}
+		n.WriteBytes(bs)
 		expected := []byte{
 			0b1101_0110,
 			0b1100_1001,
 			0b0111_0010,
 		}
-		Equal(t, expected, bs)
+		Equal(t, expected, bs.Bytes())
 	})
 
 	t.Run("hello world tree", func(t *testing.T) {
@@ -72,7 +75,8 @@ func TestEncodeTree(t *testing.T) {
 				},
 			},
 		}
-		bs := n.Bytes()
+		bs := &BitStringWriter{}
+		n.WriteBytes(bs)
 		expected := []byte{
 			0b1111_1101, // l, l, l, f
 			0b0111_0010, // r
@@ -89,7 +93,7 @@ func TestEncodeTree(t *testing.T) {
 			0b1001_0110, // right, freq, first 4 bits of o
 			0b1111_0000, // last 4 bits of o
 		}
-		Equal(t, expected, bs)
+		Equal(t, expected, bs.Bytes())
 	})
 }
 

@@ -2,19 +2,25 @@ package huffman
 
 import "fmt"
 
-func Decode(input []byte) []byte {
+func Decode(input []byte) ([]byte, error) {
+	if input == nil || len(input) < 1 {
+		return nil, fmt.Errorf("error: while decoding the input was empty")
+	}
+	bs := NewBitStringReader(input)
 	// read in tree
+	NewNodeFromBytes(bs)
+
 	// read in content
+
 	// decompress
-	return nil
+	return nil, nil
 }
 
-func NewNodeFromBytes(input []byte) *Node {
-	if input == nil || len(input) < 1 {
+func NewNodeFromBytes(bs *BitStringReader) *Node {
+	if bs == nil {
 		return nil
 	}
 	// read control bits
-	bs := NewBitStringReader(input)
 	var tree *Node = &Node{}
 	newNodeFromBytes(bs, tree)
 
@@ -22,7 +28,7 @@ func NewNodeFromBytes(input []byte) *Node {
 }
 
 func newNodeFromBytes(bs *BitStringReader, n *Node) {
-	if n == nil {
+	if n == nil || bs == nil {
 		return
 	}
 

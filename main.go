@@ -44,24 +44,16 @@ func main() {
 	switch operatingMode {
 	case "encode":
 		{
-			treeAsBytes, contentAsBytes, err := huffman.Encode(input)
+			contents, err := huffman.Encode(input)
 			check(err)
 
 			writeToOutput = func(w io.Writer) error {
-				n, err := w.Write(treeAsBytes)
+				n, err := w.Write(contents)
 				if err != nil {
 					return err
 				}
-				if n < len(treeAsBytes) {
-					return fmt.Errorf("error: wrote fewer bytes (%d) than the tree's length (%d)", n, len(treeAsBytes))
-				}
-
-				n, err = w.Write(contentAsBytes)
-				if err != nil {
-					return err
-				}
-				if n < len(contentAsBytes) {
-					return fmt.Errorf("error: wrote fewer bytes (%d) than the content's length (%d)", n, len(contentAsBytes))
+				if n < len(contents) {
+					return fmt.Errorf("error: wrote fewer bytes (%d) than the content's length (%d)", n, len(contents))
 				}
 
 				return nil
