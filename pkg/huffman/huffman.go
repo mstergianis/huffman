@@ -322,10 +322,6 @@ func (bs *BitStringWriter) Write(b byte, w int) {
 		bs.addByte()
 	}
 
-	// TODO: this section needs to be reworked. Wild Wild West has such a large
-	// tree that we need to account for bit strings that are longer than a byte
-	// in the first place.
-
 	// do we have enough space for the whole "partial-byte"?
 	overflow := bs.offset + w
 	if overflow > 8 {
@@ -357,9 +353,6 @@ func (bs *BitStringWriter) Bytes() []byte {
 }
 
 func computeRightByte(b byte, w int) byte {
-	// TODO: this function needs to be reworked. 8 bits doesn't make sense from
-	// the perspective of the tree.. Moreover we probably need to pass in a byte
-	// array.
 	switch w {
 	case 0:
 		return 0
