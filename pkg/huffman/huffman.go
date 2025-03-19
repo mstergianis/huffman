@@ -30,13 +30,6 @@ func Encode(input []byte) ([]byte, []byte, error) {
 	return tree.Bytes(), bs.Bytes(), nil
 }
 
-func Decode(input []byte) []byte {
-	// read in tree
-	// read in content
-	// decompress
-	return nil
-}
-
 type Node struct {
 	freq     int
 	freqPair *freqPair
@@ -215,17 +208,17 @@ func nodeToBytes(n *Node, bs *BitStringWriter) {
 	}
 
 	if n.freqPair != nil {
-		bs.Write(0b01, 2)
+		bs.Write(byte(CONTROL_BIT_FREQ_PAIR), 2)
 		bs.Write(n.freqPair.b, 8)
 	}
 
 	if n.left != nil {
-		bs.Write(0b11, 2)
+		bs.Write(byte(CONTROL_BIT_LEFT), 2)
 		nodeToBytes(n.left, bs)
 	}
 
 	if n.right != nil {
-		bs.Write(0b10, 2)
+		bs.Write(byte(CONTROL_BIT_RIGHT), 2)
 		nodeToBytes(n.right, bs)
 	}
 
@@ -353,27 +346,31 @@ func (bs *BitStringWriter) Bytes() []byte {
 }
 
 func computeRightByte(b byte, w int) byte {
+	return b & onesMask(w)
+}
+
+func onesMask(w int) byte {
 	switch w {
 	case 0:
 		return 0
 	case 1:
-		return b & 0b0000_0001
+		return 0b0000_0001
 	case 2:
-		return b & 0b0000_0011
+		return 0b0000_0011
 	case 3:
-		return b & 0b0000_0111
+		return 0b0000_0111
 	case 4:
-		return b & 0b0000_1111
+		return 0b0000_1111
 	case 5:
-		return b & 0b0001_1111
+		return 0b0001_1111
 	case 6:
-		return b & 0b0011_1111
+		return 0b0011_1111
 	case 7:
-		return b & 0b0111_1111
+		return 0b0111_1111
 	case 8:
-		return b & 0b1111_1111
+		return 0b1111_1111
 	}
-	panic("computeRightByte: encountered a width greater than 8")
+	panic("error: onesMask encountered a width greater than 8")
 }
 
 func (bs *BitStringWriter) addByte() {
