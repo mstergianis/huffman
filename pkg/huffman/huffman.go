@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func Huffman(input string) ([]byte, []byte, error) {
+func Encode(input []byte) ([]byte, []byte, error) {
 	for i, r := range input {
 		if r > 127 || r < 0 {
 			return nil, nil, fmt.Errorf("error: encountered a non-ascii character %c at position %d", r, i)
@@ -15,20 +15,26 @@ func Huffman(input string) ([]byte, []byte, error) {
 	ordered := computeFreqTable(input)
 
 	tree := NewNode(ordered)
-	printTree(tree)
+	// printTree(tree)
 
 	bs := &BitStringWriter{}
 
 	for _, b := range []byte(input) {
-		byte, bitWidth := tree.Search(b)
+		bytes, bitWidth := tree.Search(b)
 		if bitWidth == -1 {
 			return nil, nil, fmt.Errorf("error: cannot find the byte %c in the tree", b)
 		}
-		fmt.Printf("%q => ", string(b))
-		bs.Write(byte, bitWidth)
+		bs.WriteBytes(bytes, bitWidth)
 	}
 
 	return tree.Bytes(), bs.Bytes(), nil
+}
+
+func Decode(input []byte) []byte {
+	// read in tree
+	// read in content
+	// decompress
+	return nil
 }
 
 type Node struct {
@@ -96,32 +102,43 @@ func NewNode(ordered []freqPair) *Node {
 	return head
 }
 
-func (n *Node) Search(b byte) (byte, int) {
+func (n *Node) Search(b byte) ([]byte, int) {
 	if n == nil {
-		return 0, -1
+		return nil, -1
 	}
 	if n.freqPair != nil {
 		if n.freqPair.b == b {
-			return 0, 0
+			return []byte{0}, 0
 		}
-		return 0, -1
+		return nil, -1
 	}
 
-	if n.left == nil || n.right == nil {
-		return 0, -1
+	if n.right != nil {
+		rightBytes, rightBitWidth := n.right.Search(b)
+		if rightBitWidth >= 0 {
+			adjustedBitWidth := rightBitWidth - (len(rightBytes)-1)*8
+			if adjustedBitWidth >= 8 {
+				rightBytes = append(rightBytes, 0)
+				adjustedBitWidth -= 8
+			}
+
+			modifyingByte := &rightBytes[len(rightBytes)-1]
+			*modifyingByte = *modifyingByte | (1 << adjustedBitWidth)
+			return rightBytes, rightBitWidth + 1
+		}
 	}
 
-	leftByte, leftBitWidth := n.left.Search(b)
-	if leftBitWidth >= 0 {
-		return leftByte, leftBitWidth + 1
+	if n.left != nil {
+		leftBytes, leftBitWidth := n.left.Search(b)
+		if (leftBitWidth - (len(leftBytes)-1)*8) >= 8 {
+			leftBytes = append(leftBytes, 0)
+		}
+		if leftBitWidth >= 0 {
+			return leftBytes, leftBitWidth + 1
+		}
 	}
 
-	rightByte, rightBitWidth := n.right.Search(b)
-	if rightBitWidth >= 0 {
-		return rightByte | (1 << rightBitWidth), rightBitWidth + 1
-	}
-
-	return 0, -1
+	return nil, -1
 }
 
 func (n *Node) String() string {
@@ -276,6 +293,19 @@ type BitStringWriter struct {
 	offset int
 }
 
+func (bs *BitStringWriter) WriteBytes(bytes []byte, w int) {
+	onByte := 0
+	widthRemaining := w
+	for widthRemaining >= 8 {
+		bs.Write(bytes[onByte], 8)
+		onByte++
+		widthRemaining -= 8
+	}
+	if widthRemaining > 0 {
+		bs.Write(bytes[onByte], widthRemaining)
+	}
+}
+
 // Write takes a byte and the width of the bits within that byte and writes to
 // an internal buffer that the object maintains.
 //
@@ -376,7 +406,7 @@ func (f freqPair) String() string {
 	return fmt.Sprintf("('%s', %d)", string(f.b), f.freq)
 }
 
-func computeFreqTable(input string) (ordered []freqPair) {
+func computeFreqTable(input []byte) (ordered []freqPair) {
 	freqTable := make(map[byte]int)
 	ordered = make([]freqPair, 0, 64)
 	for _, r := range []byte(input) {

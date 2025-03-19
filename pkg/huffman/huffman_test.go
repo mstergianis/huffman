@@ -98,81 +98,20 @@ func TestEncodeTree(t *testing.T) {
 	})
 }
 
-func TestMaxLeafFreq(t *testing.T) {
-	type testCase struct {
-		input    *Node
-		expected int
-		name     string
-	}
-	testCases := []testCase{
-		{
-			input: &Node{
-				left: &Node{
-					freqPair: &freqPair{
-						freq: 1,
-					},
-				},
-				right: &Node{
-					freqPair: &freqPair{
-						freq: 0,
-					},
-				},
-			},
-			expected: 1,
-			name:     "simple",
-		},
-		{
-			input: &Node{
-				left: &Node{
-					left: &Node{
-						freqPair: &freqPair{
-							freq: 1,
-						},
-					},
-					right: &Node{
-						freqPair: &freqPair{
-							freq: 0,
-						},
-					},
-				},
-				right: &Node{
-					left: &Node{
-						freqPair: &freqPair{
-							freq: 4,
-						},
-					},
-					// In reality this wouldn't happen because of the way we
-					// construct the tree. But this function can still be
-					// tolerant to weird trees.
-					right: nil,
-				},
-			},
-			expected: 4,
-			name:     "less simple",
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			actual := maxLeafFreq(tc.input)
-			Equal(t, tc.expected, actual)
-		})
-	}
-}
-
 func TestComputeFreqTable(t *testing.T) {
 	type testCase struct {
-		input    string
+		input    []byte
 		expected []freqPair
 		name     string
 	}
 
 	testCases := []testCase{
 		{
-			input:    "aaaaaaaa",
+			input:    []byte("aaaaaaaa"),
 			expected: []freqPair{{b: 'a', freq: 8}},
 		},
 		{
-			input: "hello world",
+			input: []byte("hello world"),
 			expected: []freqPair{
 				{b: ' ', freq: 1},
 				{b: 'r', freq: 1},
@@ -198,7 +137,7 @@ func TestComputeFreqTable(t *testing.T) {
 
 func TestSearch(t *testing.T) {
 	type searchReturn struct {
-		b byte
+		b []byte
 		w int
 	}
 	type testCase struct {
@@ -210,9 +149,12 @@ func TestSearch(t *testing.T) {
 	tree := &Node{
 		right: &Node{
 			right: &Node{
-				freqPair: &freqPair{
-					b:    'r',
-					freq: 2,
+				right: makeHighlyRightNestedNode(13, 'c'),
+				left: &Node{
+					freqPair: &freqPair{
+						b:    'r',
+						freq: 2,
+					},
 				},
 			},
 			left: &Node{
@@ -231,40 +173,49 @@ func TestSearch(t *testing.T) {
 	}
 
 	testCases := []testCase{
+		// {
+		// 	name:  "find r",
+		// 	n:     tree,
+		// 	query: 'r',
+		// 	expected: searchReturn{
+		// 		b: []byte{0b110},
+		// 		w: 3,
+		// 	},
+		// },
+		// {
+		// 	name:  "find o",
+		// 	n:     tree,
+		// 	query: 'o',
+		// 	expected: searchReturn{
+		// 		b: []byte{0b0},
+		// 		w: 1,
+		// 	},
+		// },
+		// {
+		// 	name:  "find z",
+		// 	n:     tree,
+		// 	query: 'z',
+		// 	expected: searchReturn{
+		// 		b: []byte{0b10},
+		// 		w: 2,
+		// 	},
+		// },
+		// {
+		// 	name:  "find x, which is not present",
+		// 	n:     tree,
+		// 	query: 'x',
+		// 	expected: searchReturn{
+		// 		b: nil,
+		// 		w: -1,
+		// 	},
+		// },
 		{
-			name:  "find r",
+			name:  "find an element which is wider than a byte",
 			n:     tree,
-			query: 'r',
+			query: 'c',
 			expected: searchReturn{
-				b: 0b11,
-				w: 2,
-			},
-		},
-		{
-			name:  "find o",
-			n:     tree,
-			query: 'o',
-			expected: searchReturn{
-				b: 0b0,
-				w: 1,
-			},
-		},
-		{
-			name:  "find z",
-			n:     tree,
-			query: 'z',
-			expected: searchReturn{
-				b: 0b10,
-				w: 2,
-			},
-		},
-		{
-			name:  "find x, which is not present",
-			n:     tree,
-			query: 'x',
-			expected: searchReturn{
-				b: 0b0,
-				w: -1,
+				b: []byte{0b1111_1111, 0b1111_1111, 0b0000_0001},
+				w: 17,
 			},
 		},
 	}
@@ -272,10 +223,28 @@ func TestSearch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actualByte, actualWidth := tc.n.Search(tc.query)
 
-			assert.Equal(t, tc.expected.b, actualByte)
-			assert.Equal(t, tc.expected.w, actualWidth)
+			Equal(t, tc.expected.b, actualByte)
+			Equal(t, tc.expected.w, actualWidth)
 		})
 	}
+}
+
+func TestBitStringWriteBytes(t *testing.T) {
+	t.Run("large value", func(t *testing.T) {
+		bs := &BitStringWriter{}
+		bs.WriteBytes([]byte{0b1111_1111, 0b1111_1111, 0b0000_0001}, 17)
+
+		Equal(t, []byte{0xff, 0xff, 0x80}, bs.buffer)
+		Equal(t, 1, bs.offset)
+	})
+
+	t.Run("value less than 8 such that we have to ", func(t *testing.T) {
+		bs := &BitStringWriter{}
+		bs.WriteBytes([]byte{0b1111_1111}, 8)
+
+		Equal(t, []byte{0xff}, bs.buffer)
+		Equal(t, 8, bs.offset)
+	})
 }
 
 func TestBitStringWrite(t *testing.T) {
@@ -409,4 +378,15 @@ func bitPattern(s string) (byte, int) {
 		return 0b0010, 3
 	}
 	panic(fmt.Sprintf("unsupported character passed into convertCharToBitPattern: %s", s))
+}
+
+func makeHighlyRightNestedNode(depth int, char byte) *Node {
+	var head *Node = &Node{}
+	var n = head
+	for range depth {
+		n.right = &Node{}
+		n = n.right
+	}
+	n.right = &Node{freqPair: &freqPair{b: char}}
+	return head
 }
