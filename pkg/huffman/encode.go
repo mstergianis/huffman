@@ -14,9 +14,9 @@ func Encode(input []byte) ([]byte, error) {
 	ordered := computeFreqTable(input)
 
 	tree := NewNode(ordered)
-	// printTree(tree)
 
 	bs := &BitStringWriter{}
+	bs.WriteContentLength(uint32(len(input)))
 	tree.WriteBytes(bs)
 
 	for _, b := range []byte(input) {
@@ -34,28 +34,16 @@ func computeRightByte(b byte, w int) byte {
 	return b & onesMask(w)
 }
 
+const (
+	F8 byte = 0b1111_1111 >> iota
+)
+
 func onesMask(w int) byte {
-	switch w {
-	case 0:
-		return 0
-	case 1:
-		return 0b0000_0001
-	case 2:
-		return 0b0000_0011
-	case 3:
-		return 0b0000_0111
-	case 4:
-		return 0b0000_1111
-	case 5:
-		return 0b0001_1111
-	case 6:
-		return 0b0011_1111
-	case 7:
-		return 0b0111_1111
-	case 8:
-		return 0b1111_1111
+	if w > 8 {
+		panic("error: onesMask encountered a width greater than 8")
 	}
-	panic("error: onesMask encountered a width greater than 8")
+
+	return F8 >> (8 - w)
 }
 
 type freqPair struct {
@@ -68,7 +56,7 @@ func (f freqPair) Freq() int {
 }
 
 func (f freqPair) String() string {
-	return fmt.Sprintf("('%s', %d)", string(f.char), f.freq)
+	return fmt.Sprintf("(%q, %d)", string(f.char), f.freq)
 }
 
 func computeFreqTable(input []byte) (ordered []freqPair) {

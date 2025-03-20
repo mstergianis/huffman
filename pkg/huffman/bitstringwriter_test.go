@@ -3,9 +3,19 @@ package huffman
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBitStringWriteBytes(t *testing.T) {
+	t.Run("ensure we read right to left", func(t *testing.T) {
+		bs := &BitStringWriter{}
+		bs.WriteBytes([]byte{0b1111_1111, 0b1111_1111, 0b0000_0000}, 17)
+
+		Equal(t, []byte{0b0111_1111, 0xff, 0b1000_0000}, bs.buffer)
+		Equal(t, 1, bs.offset)
+	})
+
 	t.Run("large value", func(t *testing.T) {
 		bs := &BitStringWriter{}
 		bs.WriteBytes([]byte{0b1111_1111, 0b1111_1111, 0b0000_0001}, 17)
@@ -20,6 +30,26 @@ func TestBitStringWriteBytes(t *testing.T) {
 
 		Equal(t, []byte{0xff}, bs.buffer)
 		Equal(t, 8, bs.offset)
+	})
+}
+
+func TestReadContentLength(t *testing.T) {
+	t.Run("write into read", func(t *testing.T) {
+		const expected uint32 = 6_400_000
+		bsw := &BitStringWriter{}
+		bsw.WriteContentLength(expected)
+
+		Equal(t, []byte{0x0, 0x61, 0xa8, 0x0}, bsw.buffer)
+
+		bsr := &BitStringReader{
+			buffer:      bsw.buffer,
+			offset:      0,
+			currentByte: 0,
+		}
+
+		actual, err := bsr.ReadContentLength()
+		assert.NoError(t, err)
+		Equal(t, expected, actual)
 	})
 }
 

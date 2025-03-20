@@ -1,5 +1,7 @@
 package huffman
 
+import "fmt"
+
 type BitStringReader struct {
 	buffer      []byte
 	offset      int
@@ -13,32 +15,35 @@ func NewBitStringReader(input []byte) *BitStringReader {
 	return &BitStringReader{buffer: input, offset: 0, currentByte: 0}
 }
 
-func (bs *BitStringReader) Read(w int) byte {
+func (bs *BitStringReader) Read(w int) (byte, error) {
 	if w > 8 {
-		panic("error: cannot read more than 8 bits at a time from BitStringReader")
+		return 0, fmt.Errorf("error: cannot read more than 8 bits at a time from BitStringReader")
 	}
-	// [[0101 1100] [1000 0000]]
-	//                      ^
 
 	var output byte
 	leftBitsRemaining := 8 - bs.offset
 	if w > leftBitsRemaining {
 		// compute left side
-		// TODO trailing 0
 		output = (bs.buffer[bs.currentByte] & onesMask(leftBitsRemaining)) << bs.offset
 
 		// compute right side
 		rightBits := w - leftBitsRemaining
-		rightMask := onesMask(rightBits) << (8 - rightBits)
-		output = output | (bs.buffer[bs.currentByte+1] & rightMask >> (8 - rightBits))
-	} else {
-		mask := onesMask(w) << (8 - (w + bs.offset))
-		output = bs.buffer[bs.currentByte] & mask >> (8 - (w + bs.offset))
+		rightMaskShift := 8 - rightBits
+		rightMask := onesMask(rightBits) << rightMaskShift
+		if (bs.currentByte + 1) >= len(bs.buffer) {
+			return 0, fmt.Errorf("error: attempting to read byte %d from a buffer with len %d", bs.currentByte+1, len(bs.buffer))
+		}
+		output = output | (bs.buffer[bs.currentByte+1] & rightMask >> rightMaskShift)
+		bs.addOffset(w)
+		return output, nil
 	}
 
+	// we can just take from the left byte
+	mask := onesMask(w) << (8 - (w + bs.offset))
+	output = bs.buffer[bs.currentByte] & mask >> (8 - (w + bs.offset))
 	bs.addOffset(w)
 
-	return output
+	return output, nil
 }
 
 func (bs *BitStringReader) addOffset(w int) {
@@ -49,8 +54,4 @@ func (bs *BitStringReader) addOffset(w int) {
 	}
 
 	bs.offset += w
-}
-
-func (bs *BitStringReader) InputRemaining() bool {
-	return bs.currentByte < (len(bs.buffer)-1) && bs.offset < 8
 }

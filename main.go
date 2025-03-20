@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/mstergianis/huffman/pkg/huffman"
@@ -40,28 +39,15 @@ func main() {
 	input, err := os.ReadFile(inputFile)
 	check(err)
 
-	var writeToOutput func(w io.Writer) error
+	var modeFunc func([]byte) ([]byte, error)
 	switch operatingMode {
 	case "encode":
 		{
-			contents, err := huffman.Encode(input)
-			check(err)
-
-			writeToOutput = func(w io.Writer) error {
-				n, err := w.Write(contents)
-				if err != nil {
-					return err
-				}
-				if n < len(contents) {
-					return fmt.Errorf("error: wrote fewer bytes (%d) than the content's length (%d)", n, len(contents))
-				}
-
-				return nil
-			}
+			modeFunc = huffman.Encode
 		}
 	case "decode":
 		{
-			panic("unimplemented")
+			modeFunc = huffman.Decode
 		}
 	}
 
@@ -69,8 +55,14 @@ func main() {
 	check(err)
 	defer f.Close()
 
-	err = writeToOutput(f)
+	contents, err := modeFunc(input)
 	check(err)
+
+	n, err := f.Write(contents)
+	check(err)
+	if n < len(contents) {
+		panic(fmt.Sprintf("error: wrote fewer bytes (%d) than the content's length (%d)", n, len(contents)))
+	}
 
 	return
 }

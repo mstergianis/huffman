@@ -1,6 +1,42 @@
 package huffman
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestReadContent(t *testing.T) {
+	tree := &Node{
+		left: &Node{
+			left: &Node{
+				left:  &Node{freqPair: &freqPair{char: 'r'}},
+				right: &Node{freqPair: &freqPair{char: 'h'}},
+			},
+			right: &Node{
+				left:  &Node{freqPair: &freqPair{char: 'd'}},
+				right: &Node{freqPair: &freqPair{char: 'e'}},
+			},
+		},
+		right: &Node{
+			left: &Node{
+				freqPair: &freqPair{char: 'l'},
+			},
+			right: &Node{
+				left: &Node{
+					left:  &Node{freqPair: &freqPair{char: ' '}},
+					right: &Node{freqPair: &freqPair{char: 'w'}},
+				},
+				right: &Node{freqPair: &freqPair{char: 'o'}},
+			},
+		},
+	}
+	bs := NewBitStringReader([]byte{0b0010_1110, 0b1011_1110, 0b0110_1111, 0b0001_0010})
+	expected := []byte("hello world")
+	contents, err := ReadContent(bs, tree, uint32(len(expected)))
+	assert.NoError(t, err)
+	Equal(t, expected, contents)
+}
 
 func TestNewNodeFromBytes(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {

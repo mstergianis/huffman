@@ -1,3 +1,5 @@
 huffman
 !huffman/
 *.huff
+
+*-decoded.txt
