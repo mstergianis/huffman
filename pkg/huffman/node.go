@@ -2,6 +2,8 @@ package huffman
 
 import (
 	"fmt"
+	"io"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -204,4 +206,38 @@ func printTreeWithDepth(depth int, tree *Node) {
 	fmt.Printf("%s%s\n", strings.Repeat(" ", depth*2), tree.printTreeString())
 	printTreeWithDepth(depth+1, tree.left)
 	printTreeWithDepth(depth+1, tree.right)
+}
+
+func TreeToDot(w io.Writer, tree *Node) {
+	tmp := []*Node{tree}
+	q := []*Node{}
+	for len(tmp) > 0 {
+		n := tmp[0]
+		q = append(q, n)
+		if n.left != nil {
+			tmp = append(tmp, n.left)
+		}
+		if n.right != nil {
+			tmp = append(tmp, n.right)
+		}
+		tmp = tmp[1:]
+	}
+
+	for nodeID, n := range q {
+		fmt.Fprintf(w, "\t%d", nodeID)
+		if n.freqPair != nil {
+			fmt.Fprintf(w, " [label=\"char: %q\"]", n.freqPair.char)
+		}
+		fmt.Fprintln(w, ";")
+		if n.left != nil {
+			childID := slices.Index(q, n.left)
+			fmt.Fprintf(w, "\t%d -> %d;\n", nodeID, childID)
+			q = append(q, n.left)
+		}
+		if n.right != nil {
+			childID := slices.Index(q, n.right)
+			fmt.Fprintf(w, "\t%d -> %d;\n", nodeID, childID)
+		}
+		nodeID++
+	}
 }

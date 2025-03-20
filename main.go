@@ -49,6 +49,20 @@ func main() {
 		{
 			modeFunc = huffman.Decode
 		}
+	case "dot":
+		{
+			bsr := huffman.NewBitStringReader(input)
+			tree := huffman.NewNodeFromBytes(bsr)
+
+			f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+			check(err)
+			defer f.Close()
+
+			fmt.Fprintln(f, "digraph G {")
+			huffman.TreeToDot(f, tree)
+			fmt.Fprintln(f, "}")
+			return
+		}
 	}
 
 	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_RDWR, 0644)
