@@ -16,7 +16,7 @@ func (bs *BitStringWriter) Write(b byte, w int) {
 	if w < 1 {
 		return
 	}
-	// write the whole byte
+
 	if bs.offset == 0 || bs.offset >= 8 {
 		bs.addByte()
 	}
