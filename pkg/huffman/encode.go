@@ -30,22 +30,6 @@ func Encode(input []byte) ([]byte, error) {
 	return bs.Bytes(), nil
 }
 
-func computeRightByte(b byte, w int) byte {
-	return b & onesMask(w)
-}
-
-const (
-	F8 byte = 0b1111_1111 >> iota
-)
-
-func onesMask(w int) byte {
-	if w > 8 {
-		panic("error: onesMask encountered a width greater than 8")
-	}
-
-	return F8 >> (8 - w)
-}
-
 type freqPair struct {
 	char byte
 	freq int

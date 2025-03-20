@@ -103,3 +103,19 @@ func (bs *BitStringWriter) writeToLastByte(b byte, w int) {
 	bs.buffer[len(bs.buffer)-1] = bs.buffer[len(bs.buffer)-1] | (b << (7 - bs.offset - w + 1))
 	bs.offset += w
 }
+
+func computeRightByte(b byte, w int) byte {
+	return b & onesMask(w)
+}
+
+const (
+	F8 byte = 0b1111_1111 >> iota
+)
+
+func onesMask(w int) byte {
+	if w > 8 {
+		panic("error: onesMask encountered a width greater than 8")
+	}
+
+	return F8 >> (8 - w)
+}
