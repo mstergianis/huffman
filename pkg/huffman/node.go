@@ -18,10 +18,10 @@ type Frequentable interface {
 }
 
 func NewNode(ordered []freqPair) *Node {
-	nodes := make([]Frequentable, 0, 64)
+	nodes := make([]Frequentable, len(ordered))
 
-	for _, o := range ordered {
-		nodes = append(nodes, o)
+	for i, o := range ordered {
+		nodes[i] = o
 	}
 
 	for len(nodes) > 1 {
