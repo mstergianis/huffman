@@ -46,11 +46,11 @@ func (f freqPair) String() string {
 func computeFreqTable(input []byte) (ordered []freqPair) {
 	freqTable := make(map[byte]int)
 	ordered = make([]freqPair, 0, 64)
-	for _, r := range []byte(input) {
-		if _, ok := freqTable[r]; !ok {
-			freqTable[r] = 0
+	for _, b := range []byte(input) {
+		if _, ok := freqTable[b]; !ok {
+			freqTable[b] = 0
 		}
-		freqTable[r]++
+		freqTable[b]++
 	}
 
 	for k, v := range freqTable {
