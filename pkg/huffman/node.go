@@ -163,6 +163,7 @@ func (n *Node) WriteBytes(bs *BitStringWriter) {
 	//   freqPairBitString (2 bits) = "01" .
 	//   leftBitString     (2 bits) = "11" .
 	//   rightBitString    (2 bits) = "10" .
+	//   byte              (8 bits) = 8 * binaryDigit
 	//   binaryDigit                = "1" | "0" .
 	//
 	// Notice that the grammar does not prescribe that all elements occupy a
